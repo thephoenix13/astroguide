@@ -1,4 +1,4 @@
-import { UserProfile, LifeEvent, Prediction, ChatMessage, DailyReading, FaceReading, BirthChart } from '../types';
+import { UserProfile, LifeEvent, Prediction, ChatMessage, DailyReading, FaceReading, PalmReading, BirthChart } from '../types';
 
 const KEYS = {
   USER: 'astro_guide_user',
@@ -7,6 +7,7 @@ const KEYS = {
   CHAT: 'astro_guide_chat',
   READINGS: 'astro_guide_readings',
   FACE_READINGS: 'astro_guide_face_readings',
+  PALM_READINGS: 'astro_guide_palm_readings',
 };
 
 export const storage = {
@@ -51,6 +52,13 @@ export const storage = {
   },
   setFaceReadings: (readings: FaceReading[]) => {
     localStorage.setItem(KEYS.FACE_READINGS, JSON.stringify(readings));
+  },
+  getPalmReadings: (): PalmReading[] => {
+    const data = localStorage.getItem(KEYS.PALM_READINGS);
+    return data ? JSON.parse(data) : [];
+  },
+  setPalmReadings: (readings: PalmReading[]) => {
+    localStorage.setItem(KEYS.PALM_READINGS, JSON.stringify(readings));
   },
   clear: () => {
     Object.values(KEYS).forEach(key => localStorage.removeItem(key));

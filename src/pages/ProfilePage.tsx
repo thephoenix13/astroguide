@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { LogOut, Crown, Star, Calendar, MapPin, Clock, Shield, ChevronRight, Sparkles } from 'lucide-react';
+import { LogOut, Crown, Star, Calendar, MapPin, Clock, Shield, ChevronRight, Sparkles, Hand } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function ProfilePage() {
-  const { user, logout, getAccuracyScore, predictions, events, faceReadings } = useApp();
+  const { user, logout, getAccuracyScore, predictions, events, faceReadings, palmReadings } = useApp();
   const navigate = useNavigate();
   const [showPricing, setShowPricing] = useState(false);
   const score = getAccuracyScore();
@@ -71,6 +71,10 @@ export function ProfilePage() {
           <p className="text-2xl font-bold text-indigo-300">{faceReadings.length}</p>
           <p className="text-xs text-slate-400 mt-1">Face Readings</p>
         </div>
+        <div className="bg-white/5 border border-purple-800/20 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-orange-300">{palmReadings.length}</p>
+          <p className="text-xs text-slate-400 mt-1">Palm Readings</p>
+        </div>
       </div>
 
       {/* Navigation Links */}
@@ -95,6 +99,22 @@ export function ProfilePage() {
           <div className="flex items-center gap-3">
             <Clock size={18} className="text-emerald-400" />
             <span className="text-white text-sm">Life Timeline</span>
+          </div>
+          <ChevronRight size={16} className="text-slate-500" />
+        </button>
+        <div className="border-t border-white/5" />
+        <button onClick={() => navigate('/face')} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all">
+          <div className="flex items-center gap-3">
+            <Sparkles size={18} className="text-indigo-400" />
+            <span className="text-white text-sm">Face Reading</span>
+          </div>
+          <ChevronRight size={16} className="text-slate-500" />
+        </button>
+        <div className="border-t border-white/5" />
+        <button onClick={() => navigate('/palm')} className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-all">
+          <div className="flex items-center gap-3">
+            <Hand size={18} className="text-orange-400" />
+            <span className="text-white text-sm">Palm Reading</span>
           </div>
           <ChevronRight size={16} className="text-slate-500" />
         </button>

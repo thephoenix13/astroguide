@@ -1,12 +1,12 @@
 import { useApp } from '../context/AppContext';
-import { Clock, Star, Bookmark, Calendar } from 'lucide-react';
+import { Clock, Star, Bookmark, Calendar, Sparkles, Hand } from 'lucide-react';
 
 export function TimelinePage() {
-  const { events, predictions, readings } = useApp();
+  const { events, predictions, readings, faceReadings, palmReadings } = useApp();
 
   type TimelineItem = {
     id: string;
-    type: 'event' | 'prediction' | 'reading';
+    type: 'event' | 'prediction' | 'reading' | 'face' | 'palm';
     date: string;
     title: string;
     description: string;
@@ -43,6 +43,24 @@ export function TimelinePage() {
       description: r.summary,
       icon: Calendar,
       color: 'text-purple-400',
+    })),
+    ...faceReadings.map(f => ({
+      id: f.id,
+      type: 'face' as const,
+      date: f.createdAt,
+      title: 'Face Reading',
+      description: f.interpretation.substring(0, 100) + '...',
+      icon: Sparkles,
+      color: 'text-indigo-400',
+    })),
+    ...palmReadings.map(p => ({
+      id: p.id,
+      type: 'palm' as const,
+      date: p.createdAt,
+      title: 'Palm Reading',
+      description: p.interpretation.substring(0, 100) + '...',
+      icon: Hand,
+      color: 'text-orange-400',
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

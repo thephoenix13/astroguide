@@ -1,79 +1,67 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { generateFaceReadingInterpretation } from '../lib/ai';
-import { Camera, RotateCcw, Sparkles, ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, History, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { FaceMeasurements } from '../types';
+import { ImageCapture } from '../components/ImageCapture';
 
 export function FaceReadingPage() {
   const { addFaceReading, faceReadings } = useApp();
   const navigate = useNavigate();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [captured, setCaptured] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<{ measurements: FaceMeasurements; interpretation: string } | null>(null);
-  const [cameraError, setCameraError] = useState('');
   const [showHistory, setShowHistory] = useState(false);
 
-  const startCamera = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-      setCameraError('');
-    } catch (err) {
-      setCameraError('Camera access denied. Please allow camera access and try again.');
-    }
+  const handleImageCaptured = (canvas: HTMLCanvasElement, _imageDataUrl: string) => {
+    setProcessing(true);
+
+    setTimeout(() => {
+      // Draw face mesh overlay on the canvas
+      drawFaceMesh(canvas);
+
+      // Generate simulated measurements
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      const measurements: FaceMeasurements = {
+        foreheadWidth: 8.5 + Math.random() * 3,
+        eyeDistance: 5.5 + Math.random() * 2,
+        noseLength: 4.0 + Math.random() * 1.5,
+        chinWidth: 6.0 + Math.random() * 2,
+        faceLength: 15.0 + Math.random() * 3,
+        jawAngle: 110 + Math.random() * 20,
+        classifications: {
+          forehead: measurements_forehead(width, height),
+          eyes: measurements_eyes(width, height),
+          nose: measurements_nose(width, height),
+          chin: measurements_chin(width, height),
+        }
+      };
+
+      const interpretation = generateFaceReadingInterpretation(measurements);
+      
+      setResult({ measurements, interpretation });
+      addFaceReading({ measurements, interpretation });
+      setProcessing(false);
+    }, 1500);
   };
 
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-  };
-
-  useEffect(() => {
-    return () => { stopCamera(); };
-  }, []);
-
-  const capturePhoto = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+  const drawFaceMesh = (canvas: HTMLCanvasElement) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(video, 0, 0);
-    
-    // Draw face mesh overlay (simulated landmarks)
-    drawFaceMesh(ctx, canvas.width, canvas.height);
-    
-    stopCamera();
-    setCaptured(true);
-    processFace(canvas);
-  }, [stream]);
-
-  const drawFaceMesh = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // Simulate face mesh landmarks (468 points mapped to face region)
+    const width = canvas.width;
+    const height = canvas.height;
     const centerX = width / 2;
     const centerY = height / 2;
     const faceWidth = width * 0.4;
     const faceHeight = height * 0.5;
     
     ctx.strokeStyle = 'rgba(139, 92, 246, 0.7)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.fillStyle = 'rgba(251, 191, 36, 0.8)';
 
-    // Generate realistic-looking face mesh points
     const points: [number, number][] = [];
     
     // Face oval
@@ -133,7 +121,7 @@ export function FaceReadingPage() {
       ]);
     }
 
-    // Draw connections
+    // Draw connections - face oval
     ctx.beginPath();
     for (let i = 0; i < 36; i++) {
       const next = (i + 1) % 36;
@@ -155,7 +143,7 @@ export function FaceReadingPage() {
     // Draw points
     points.forEach(([x, y]) => {
       ctx.beginPath();
-      ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
       ctx.fill();
     });
 
@@ -179,222 +167,188 @@ export function FaceReadingPage() {
     ctx.setLineDash([]);
   };
 
-  const processFace = (canvas: HTMLCanvasElement) => {
-    setProcessing(true);
-    
-    // Simulate processing delay
-    setTimeout(() => {
-      // Generate simulated measurements based on canvas dimensions
-      const width = canvas.width;
-      const height = canvas.height;
-      
-      const measurements: FaceMeasurements = {
-        foreheadWidth: 8.5 + Math.random() * 3,
-        eyeDistance: 5.5 + Math.random() * 2,
-        noseLength: 4.0 + Math.random() * 1.5,
-        chinWidth: 6.0 + Math.random() * 2,
-        faceLength: 15.0 + Math.random() * 3,
-        jawAngle: 110 + Math.random() * 20,
-        classifications: {
-          forehead: Math.random() > 0.5 ? 'broad' : Math.random() > 0.5 ? 'narrow' : 'balanced',
-          eyes: Math.random() > 0.5 ? 'wide-set' : Math.random() > 0.5 ? 'close-set' : 'balanced',
-          nose: Math.random() > 0.5 ? 'prominent' : Math.random() > 0.5 ? 'small' : 'balanced',
-          chin: Math.random() > 0.5 ? 'strong' : Math.random() > 0.5 ? 'soft' : 'balanced',
-        }
-      };
-      
-      const interpretation = generateFaceReadingInterpretation(measurements);
-      
-      setResult({ measurements, interpretation });
-      addFaceReading({ measurements, interpretation });
-      setProcessing(false);
-    }, 2000);
-  };
-
   const reset = () => {
-    setCaptured(false);
     setResult(null);
     setProcessing(false);
   };
 
-  return (
-    <div className="p-4 space-y-6 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg">
-          <ArrowLeft size={20} className="text-slate-300" />
+  // History view
+  if (showHistory) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-white/5 rounded-lg">
+            <ArrowLeft size={20} className="text-slate-300" />
+          </button>
+          <h1 className="text-xl font-bold text-white">Face Reading History</h1>
+        </div>
+
+        {faceReadings.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            <p>No face readings yet</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {faceReadings.slice().reverse().map((reading, i) => (
+              <div key={reading.id} className="bg-white/5 border border-purple-800/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={14} className="text-purple-400" />
+                  <span className="text-xs text-slate-500">
+                    {new Date(reading.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-slate-300 text-sm line-clamp-3">
+                  {reading.interpretation.substring(0, 150)}...
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Result view
+  if (result) {
+    return (
+      <div className="p-4 space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg">
+            <ArrowLeft size={20} className="text-slate-300" />
+          </button>
+          <h1 className="text-xl font-bold text-white">Face Reading Result</h1>
+        </div>
+
+        {/* Measurements */}
+        <div className="bg-white/5 border border-purple-800/20 rounded-2xl p-5">
+          <h2 className="text-white font-semibold mb-3">Detected Measurements</h2>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Forehead</span>
+              <span className="text-amber-300">{result.measurements.foreheadWidth.toFixed(1)} cm</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Eye Distance</span>
+              <span className="text-amber-300">{result.measurements.eyeDistance.toFixed(1)} cm</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Nose Length</span>
+              <span className="text-amber-300">{result.measurements.noseLength.toFixed(1)} cm</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Chin Width</span>
+              <span className="text-amber-300">{result.measurements.chinWidth.toFixed(1)} cm</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Face Length</span>
+              <span className="text-amber-300">{result.measurements.faceLength.toFixed(1)} cm</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Jaw Angle</span>
+              <span className="text-amber-300">{result.measurements.jawAngle.toFixed(0)}°</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Interpretation */}
+        <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-700/20 rounded-2xl p-5">
+          <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
+            <Sparkles size={16} className="text-purple-400" />
+            Interpretation
+          </h2>
+          <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+            {result.interpretation}
+          </div>
+        </div>
+
+        <button
+          onClick={reset}
+          className="w-full py-3 bg-purple-600 rounded-xl text-white font-medium hover:bg-purple-500 transition-colors"
+        >
+          New Face Reading
         </button>
-        <h1 className="text-xl font-bold text-white">Face Reading</h1>
-        <span className="text-xs text-slate-500 ml-auto">Mukha Shastra</span>
+      </div>
+    );
+  }
+
+  // Main capture view
+  return (
+    <div className="p-4 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/5 rounded-lg">
+            <ArrowLeft size={20} className="text-slate-300" />
+          </button>
+          <h1 className="text-xl font-bold text-white">Face Reading</h1>
+        </div>
+        <button
+          onClick={() => setShowHistory(true)}
+          className="p-2 hover:bg-white/5 rounded-lg relative"
+        >
+          <History size={20} className="text-slate-300" />
+          {faceReadings.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-purple-500 rounded-full text-[10px] text-white flex items-center justify-center">
+              {faceReadings.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {!captured && !result && (
-        <>
-          {/* Camera View */}
-          <div className="relative aspect-[3/4] bg-black/50 rounded-2xl overflow-hidden border border-purple-800/20">
-            {stream ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover mirror"
-                style={{ transform: 'scaleX(-1)' }}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <Camera size={48} className="text-slate-600 mb-4" />
-                <p className="text-slate-400 text-sm">Camera preview will appear here</p>
-              </div>
-            )}
-            
-            {/* Face guide overlay */}
-            {stream && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-48 h-64 border-2 border-dashed border-purple-400/40 rounded-full" />
-              </div>
-            )}
-          </div>
-          <canvas ref={canvasRef} className="hidden" />
-
-          {cameraError && (
-            <p className="text-red-400 text-sm text-center">{cameraError}</p>
-          )}
-
-          {/* Controls */}
-          <div className="flex gap-3">
-            {!stream ? (
-              <button
-                onClick={startCamera}
-                className="flex-1 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
-              >
-                <Camera size={20} />
-                Start Camera
-              </button>
-            ) : (
-              <button
-                onClick={capturePhoto}
-                className="flex-1 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 animate-pulse"
-              >
-                <Camera size={20} />
-                Capture & Analyze
-              </button>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="bg-white/5 border border-purple-800/20 rounded-xl p-4">
-            <h3 className="text-white font-medium text-sm mb-2">How it works</h3>
-            <ul className="text-slate-400 text-xs space-y-1.5">
-              <li>• Position your face within the guide oval</li>
-              <li>• Ensure good, even lighting</li>
-              <li>• Look directly at the camera</li>
-              <li>• Face mesh will be overlaid to show measurements</li>
-              <li>• Interpretation based on Vedic Mukha Shastra</li>
-            </ul>
-          </div>
-
-          {/* Previous Readings */}
-          {faceReadings.length > 0 && (
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="w-full py-3 border border-purple-800/20 rounded-xl text-purple-300 text-sm hover:bg-white/5"
-            >
-              {showHistory ? 'Hide' : 'View'} Previous Readings ({faceReadings.length})
-            </button>
-          )}
-
-          {showHistory && faceReadings.length > 0 && (
-            <div className="space-y-3">
-              {faceReadings.slice().reverse().map((fr, i) => (
-                <div key={fr.id} className="bg-white/5 border border-purple-800/20 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 mb-2">
-                    {new Date(fr.createdAt).toLocaleDateString()}
-                  </p>
-                  <p className="text-slate-300 text-sm line-clamp-3">{fr.interpretation.substring(0, 150)}...</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Processing State */}
-      {processing && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin" />
-          <p className="text-white font-medium">Analyzing facial features...</p>
-          <p className="text-slate-400 text-sm mt-2">Detecting landmarks and computing measurements</p>
+      <div className="bg-gradient-to-br from-purple-900/20 to-indigo-900/20 border border-purple-800/20 rounded-2xl p-5">
+        <p className="text-slate-300 text-sm mb-4">
+          Capture your face or upload a photo for a Vedic face reading (Mukha Shastra). 
+          We'll analyze your facial proportions and provide insights based on ancient wisdom.
+        </p>
+        <div className="flex items-start gap-2 text-xs text-slate-500">
+          <span className="text-purple-400">✦</span>
+          <p>Your image is processed locally and not stored permanently. Only measurements and interpretations are saved.</p>
         </div>
-      )}
+      </div>
 
-      {/* Result */}
-      {result && !processing && (
-        <div className="space-y-4">
-          {/* Captured Image with Mesh */}
-          <div className="relative aspect-[3/4] bg-black/50 rounded-2xl overflow-hidden border border-purple-800/20">
-            <canvas
-              ref={canvasRef}
-              className="w-full h-full object-cover"
-              style={{ display: 'block' }}
-            />
+      {processing ? (
+        <div className="aspect-square bg-black rounded-2xl flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-purple-300 text-sm">Analyzing facial features...</p>
           </div>
-
-          {/* Measurements */}
-          <div className="bg-white/5 border border-purple-800/20 rounded-xl p-4">
-            <h3 className="text-white font-medium text-sm mb-3 flex items-center gap-2">
-              <Check size={14} className="text-emerald-400" />
-              Detected Measurements
-            </h3>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-white/5 rounded-lg p-2">
-                <span className="text-slate-400">Forehead</span>
-                <p className="text-white font-medium">{result.measurements.foreheadWidth.toFixed(1)} cm</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <span className="text-slate-400">Eye Distance</span>
-                <p className="text-white font-medium">{result.measurements.eyeDistance.toFixed(1)} cm</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <span className="text-slate-400">Nose Length</span>
-                <p className="text-white font-medium">{result.measurements.noseLength.toFixed(1)} cm</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <span className="text-slate-400">Chin Width</span>
-                <p className="text-white font-medium">{result.measurements.chinWidth.toFixed(1)} cm</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <span className="text-slate-400">Face Length</span>
-                <p className="text-white font-medium">{result.measurements.faceLength.toFixed(1)} cm</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2">
-                <span className="text-slate-400">Jaw Angle</span>
-                <p className="text-white font-medium">{result.measurements.jawAngle.toFixed(0)}°</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Interpretation */}
-          <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-700/20 rounded-2xl p-5">
-            <h3 className="text-white font-medium text-sm mb-3 flex items-center gap-2">
-              <Sparkles size={14} className="text-amber-400" />
-              Vedic Face Reading
-            </h3>
-            <div className="text-slate-300 text-sm whitespace-pre-line leading-relaxed">
-              {result.interpretation}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <button
-            onClick={reset}
-            className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
-          >
-            <RotateCcw size={18} />
-            Take Another Reading
-          </button>
         </div>
+      ) : (
+        <ImageCapture
+          onImageCaptured={handleImageCaptured}
+          aspectRatio="aspect-square"
+          label="Face"
+          overlayType="face"
+        />
       )}
     </div>
   );
+}
+
+// Helper functions for measurement classification
+function measurements_forehead(width: number, height: number): string {
+  const ratio = width / height;
+  if (ratio > 0.7) return 'broad';
+  if (ratio < 0.5) return 'narrow';
+  return 'balanced';
+}
+
+function measurements_eyes(width: number, height: number): string {
+  const ratio = (width * 0.3) / (height * 0.2);
+  if (ratio > 1.5) return 'wide-set';
+  if (ratio < 1.0) return 'close-set';
+  return 'balanced';
+}
+
+function measurements_nose(width: number, height: number): string {
+  const ratio = height / width;
+  if (ratio > 0.5) return 'prominent';
+  if (ratio < 0.3) return 'small';
+  return 'medium';
+}
+
+function measurements_chin(width: number, height: number): string {
+  const ratio = width / height;
+  if (ratio > 0.6) return 'strong';
+  if (ratio < 0.4) return 'soft';
+  return 'moderate';
 }

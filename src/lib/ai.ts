@@ -158,3 +158,111 @@ export function generateFaceReadingInterpretation(measurements: {
   
   return interpretation;
 }
+
+export function generatePalmReadingInterpretation(measurements: {
+  lifeLineLength: number;
+  heartLineLength: number;
+  headLineLength: number;
+  fateLinePresent: boolean;
+  sunLinePresent: boolean;
+  palmWidth: number;
+  fingerLength: number;
+  fingerSpacing: number;
+  lineClarity: number;
+  classifications: Record<string, string>;
+}): string {
+  const c = measurements.classifications;
+  
+  let interpretation = "✋ **Vedic Palm Reading (Hasta Samudrika Shastra)**\n\n";
+  interpretation += "Based on the analysis of your palm:\n\n";
+
+  // Life Line
+  interpretation += `**Life Line (${c.lifeLine || 'moderate'}):** `;
+  if (c.lifeLine === 'long') {
+    interpretation += "A long, well-defined life line indicates robust vitality, stamina, and a zest for life. You have strong immunity and the energy to pursue your passions fully.\n\n";
+  } else if (c.lifeLine === 'short') {
+    interpretation += "A shorter life line doesn't mean short life — it indicates intense, focused living. You make the most of every moment and adapt quickly to change.\n\n";
+  } else {
+    interpretation += "A moderate life line shows balanced vitality and a steady approach to life's journey. You maintain consistent energy levels.\n\n";
+  }
+
+  // Heart Line
+  interpretation += `**Heart Line (${c.heartLine || 'moderate'}):** `;
+  if (c.heartLine === 'long') {
+    interpretation += "A long heart line reveals a deeply emotional and compassionate nature. You give love freely and form meaningful connections. Your emotional world is rich and expansive.\n\n";
+  } else if (c.heartLine === 'short') {
+    interpretation += "A shorter heart line suggests you express love through actions rather than words. You're practical in relationships and value quality over quantity in connections.\n\n";
+  } else {
+    interpretation += "A balanced heart line shows emotional stability. You give and receive love in healthy measure, maintaining good boundaries.\n\n";
+  }
+
+  // Head Line
+  interpretation += `**Head Line (${c.headLine || 'moderate'}):** `;
+  if (c.headLine === 'long') {
+    interpretation += "A long head line indicates analytical depth and careful thinking. You consider all angles before making decisions and have strong mental endurance.\n\n";
+  } else if (c.headLine === 'short') {
+    interpretation += "A shorter head line suggests quick, decisive thinking. You're practical, action-oriented, and prefer to learn through experience rather than over-analysis.\n\n";
+  } else {
+    interpretation += "A balanced head line shows a healthy mix of analytical and intuitive thinking. You can be both thoughtful and decisive as situations require.\n\n";
+  }
+
+  // Fate Line
+  interpretation += `**Fate Line:** `;
+  if (measurements.fateLinePresent) {
+    interpretation += `A visible fate line (${c.fateLine || 'clear'}) suggests a strong sense of purpose and direction. You likely feel guided by destiny and have clear life goals.\n\n`;
+  } else {
+    interpretation += "No prominent fate line indicates you're a self-determined soul who creates your own path. You're not bound by predetermined destiny — you forge your way through free will.\n\n";
+  }
+
+  // Sun Line
+  if (measurements.sunLinePresent) {
+    interpretation += `**Sun Line:** Present and ${c.sunLine || 'visible'} — this indicates potential for fame, recognition, and creative success. Your talents are likely to be recognized by others.\n\n`;
+  }
+
+  // Palm Shape
+  interpretation += `**Palm Shape (${c.palmShape || 'balanced'}):** `;
+  if (c.palmShape === 'square') {
+    interpretation += "A square palm indicates practical, grounded nature. You're reliable, methodical, and excel in material matters.\n\n";
+  } else if (c.palmShape === 'rectangular') {
+    interpretation += "A rectangular palm suggests an active, energetic personality. You're ambitious and thrive when busy with multiple pursuits.\n\n";
+  } else {
+    interpretation += "A balanced palm shape shows adaptability and versatility. You can handle both practical and creative challenges.\n\n";
+  }
+
+  // Finger Length
+  interpretation += `**Fingers (${c.fingers || 'medium'}):** `;
+  if (c.fingers === 'long') {
+    interpretation += "Long fingers indicate attention to detail, patience, and meticulous nature. You excel in work requiring precision.\n\n";
+  } else if (c.fingers === 'short') {
+    interpretation += "Shorter fingers suggest quick action, impulsiveness, and a hands-on approach. You prefer doing over planning.\n\n";
+  } else {
+    interpretation += "Medium-length fingers show a good balance between planning and action.\n\n";
+  }
+
+  // Line Clarity
+  interpretation += `**Line Clarity (${c.clarity || 'moderate'}):** `;
+  if (c.clarity === 'clear') {
+    interpretation += "Clear, well-defined lines indicate mental clarity and focused intentions. You know what you want and pursue it with determination.\n\n";
+  } else if (c.clarity === 'faint') {
+    interpretation += "Lighter lines suggest a sensitive, intuitive nature. You're open to subtle energies and may have strong psychic abilities.\n\n";
+  } else {
+    interpretation += "Moderately clear lines show a balanced mind that's open yet focused.\n\n";
+  }
+
+  // Overall Summary
+  interpretation += `\n**Overall Reading:** Your palm reveals a personality that combines ${
+    c.lifeLine === 'long' ? 'strong vitality' : 'adaptable energy'
+  } with ${
+    c.heartLine === 'long' ? 'deep emotional capacity' : 'practical love expression'
+  } and ${
+    c.headLine === 'long' ? 'analytical depth' : 'quick decisive thinking'
+  }. ${
+    measurements.fateLinePresent
+      ? 'Your visible fate line suggests you are aligned with your life purpose.'
+      : 'Your self-determined path means you have the freedom to create your own destiny.'
+  }\n\n`;
+
+  interpretation += "_This reading is based on traditional Hasta Samudrika Shastra principles. Palm lines can change over time as you grow and evolve. Your palm reflects your current energetic state._";
+
+  return interpretation;
+}

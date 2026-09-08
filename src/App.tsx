@@ -7,6 +7,7 @@ import { ChartPage } from './pages/ChartPage';
 import { ChatPage } from './pages/ChatPage';
 import { TimelinePage } from './pages/TimelinePage';
 import { FaceReadingPage } from './pages/FaceReadingPage';
+import { PalmReadingPage } from './pages/PalmReadingPage';
 import { PredictionsPage } from './pages/PredictionsPage';
 import { ProfilePage } from './pages/ProfilePage';
 
@@ -40,6 +41,7 @@ function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/face" element={<FaceReadingPage />} />
+        <Route path="/palm" element={<PalmReadingPage />} />
         <Route path="/predictions" element={<PredictionsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

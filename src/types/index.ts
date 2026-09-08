@@ -81,3 +81,24 @@ export interface FaceMeasurements {
   jawAngle: number;
   classifications: Record<string, string>;
 }
+
+export interface PalmReading {
+  id: string;
+  userId: string;
+  measurements: PalmMeasurements;
+  interpretation: string;
+  createdAt: string;
+}
+
+export interface PalmMeasurements {
+  lifeLineLength: number;
+  heartLineLength: number;
+  headLineLength: number;
+  fateLinePresent: boolean;
+  sunLinePresent: boolean;
+  palmWidth: number;
+  fingerLength: number;
+  fingerSpacing: number;
+  lineClarity: number;
+  classifications: Record<string, string>;
+}

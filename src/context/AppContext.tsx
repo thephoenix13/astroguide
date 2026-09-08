@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { UserProfile, LifeEvent, Prediction, ChatMessage, DailyReading, FaceReading, BirthChart } from '../types';
+import { UserProfile, LifeEvent, Prediction, ChatMessage, DailyReading, FaceReading, PalmReading, BirthChart } from '../types';
 import { storage } from '../lib/storage';
 import { computeBirthChart } from '../lib/astrology';
 
@@ -10,6 +10,7 @@ interface AppContextType {
   chatHistory: ChatMessage[];
   readings: DailyReading[];
   faceReadings: FaceReading[];
+  palmReadings: PalmReading[];
   isAuthenticated: boolean;
   login: (email: string, password: string) => boolean;
   signup: (email: string, password: string, fullName: string) => boolean;
@@ -23,6 +24,7 @@ interface AppContextType {
   clearChat: () => void;
   addReading: (reading: Omit<DailyReading, 'id' | 'userId'>) => void;
   addFaceReading: (reading: Omit<FaceReading, 'id' | 'userId' | 'createdAt'>) => void;
+  addPalmReading: (reading: Omit<PalmReading, 'id' | 'userId' | 'createdAt'>) => void;
   getAccuracyScore: () => { accurate: number; total: number; percentage: number };
 }
 
@@ -35,12 +37,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(storage.getChatHistory());
   const [readings, setReadings] = useState<DailyReading[]>(storage.getReadings());
   const [faceReadings, setFaceReadings] = useState<FaceReading[]>(storage.getFaceReadings());
+  const [palmReadings, setPalmReadings] = useState<PalmReading[]>(storage.getPalmReadings());
 
   useEffect(() => { storage.setEvents(events); }, [events]);
   useEffect(() => { storage.setPredictions(predictions); }, [predictions]);
   useEffect(() => { storage.setChatHistory(chatHistory); }, [chatHistory]);
   useEffect(() => { storage.setReadings(readings); }, [readings]);
   useEffect(() => { storage.setFaceReadings(faceReadings); }, [faceReadings]);
+  useEffect(() => { storage.setPalmReadings(palmReadings); }, [palmReadings]);
 
   const login = useCallback((email: string, _password: string): boolean => {
     const existingUser = storage.getUser();
@@ -92,6 +96,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setChatHistory([]);
     setReadings([]);
     setFaceReadings([]);
+    setPalmReadings([]);
   }, []);
 
   const completeOnboarding = useCallback((birthDate: string, birthTime: string, birthPlace: string) => {
@@ -143,6 +148,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setFaceReadings(prev => [...prev, newReading]);
   }, [user]);
 
+  const addPalmReading = useCallback((reading: Omit<PalmReading, 'id' | 'userId' | 'createdAt'>) => {
+    if (!user) return;
+    const newReading: PalmReading = { ...reading, id: crypto.randomUUID(), userId: user.id, createdAt: new Date().toISOString() };
+    setPalmReadings(prev => [...prev, newReading]);
+  }, [user]);
+
   const getAccuracyScore = useCallback(() => {
     const total = predictions.filter(p => p.status !== 'pending').length;
     const accurate = predictions.filter(p => p.status === 'accurate').length;
@@ -151,11 +162,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      user, events, predictions, chatHistory, readings, faceReadings,
+      user, events, predictions, chatHistory, readings, faceReadings, palmReadings,
       isAuthenticated: !!user?.onboardingComplete,
       login, signup, logout, completeOnboarding,
       addEvent, deleteEvent, addPrediction, updatePredictionStatus,
-      addChatMessage, clearChat, addReading, addFaceReading, getAccuracyScore
+      addChatMessage, clearChat, addReading, addFaceReading, addPalmReading, getAccuracyScore
     }}>
       {children}
     </AppContext.Provider>

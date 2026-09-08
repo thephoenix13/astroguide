@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getDailyTransitReading } from '../lib/astrology';
-import { Sparkles, Calendar, TrendingUp, Star } from 'lucide-react';
+import { Sparkles, Calendar, TrendingUp, Star, Hand } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function HomePage() {
@@ -118,6 +118,33 @@ export function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Readings Section */}
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-3">Divine Readings</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/face')}
+            className="bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border border-purple-700/30 rounded-2xl p-4 text-left hover:border-purple-500/50 transition-all active:scale-[0.98]"
+          >
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
+              <Sparkles size={18} className="text-purple-300" />
+            </div>
+            <p className="text-white font-medium text-sm">Face Reading</p>
+            <p className="text-slate-500 text-xs mt-1">Mukha Shastra</p>
+          </button>
+          <button
+            onClick={() => navigate('/palm')}
+            className="bg-gradient-to-br from-amber-900/30 to-orange-900/30 border border-amber-700/30 rounded-2xl p-4 text-left hover:border-amber-500/50 transition-all active:scale-[0.98]"
+          >
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center mb-3">
+              <Hand size={18} className="text-amber-300" />
+            </div>
+            <p className="text-white font-medium text-sm">Palm Reading</p>
+            <p className="text-slate-500 text-xs mt-1">Hasta Samudrika</p>
+          </button>
+        </div>
+      </div>
 
       {/* CTA */}
       <button

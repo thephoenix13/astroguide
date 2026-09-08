@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { Home, MessageCircle, Clock, Sparkles, User } from 'lucide-react';
+import { Home, MessageCircle, Clock, Sparkles, User, Hand } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -12,8 +12,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/chat', icon: MessageCircle, label: 'Chat' },
-    { path: '/timeline', icon: Clock, label: 'Timeline' },
     { path: '/face', icon: Sparkles, label: 'Face' },
+    { path: '/palm', icon: Hand, label: 'Palm' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
@@ -32,7 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-all ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all ${
                   isActive ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
