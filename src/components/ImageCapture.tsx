@@ -13,36 +13,37 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [mode, setMode] = useState<'select' | 'camera' | 'upload'>('select');
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState('');
   const [processing, setProcessing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
+  // Stop any active camera stream
   const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setCameraReady(false);
-  }, [stream]);
+  }, []);
 
-  const startCamera = async () => {
-    setMode('camera');
+  // Start camera - called AFTER video element is in DOM via useEffect
+  const startCamera = useCallback(async () => {
     setCameraError('');
     setCameraReady(false);
+
+    // Stop any existing stream first
+    stopCamera();
 
     try {
       // Check if getUserMedia is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setCameraError('Camera API not available in this browser. Please use the upload option instead.');
-        return;
-      }
-
-      // Check if we're in a secure context
-      if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-        setCameraError('Camera requires HTTPS. Please use the upload option or access via HTTPS.');
         return;
       }
 
@@ -55,27 +56,65 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
         audio: false,
       };
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().then(() => {
-            setCameraReady(true);
-          }).catch(() => {
-            // Try without playsinline for some browsers
-            if (videoRef.current) {
-              videoRef.current.setAttribute('playsinline', 'false');
-              videoRef.current.play().then(() => {
-                setCameraReady(true);
-              }).catch(() => {
-                setCameraError('Could not start video playback. Try the upload option.');
-              });
-            }
-          });
-        };
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (constraintErr) {
+        // Fallback to simple video constraint
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
       }
+
+      streamRef.current = mediaStream;
+
+      // Video element should be in DOM now (we're in a useEffect that runs after render)
+      const videoEl = videoRef.current;
+      if (!videoEl) {
+        setCameraError('Video element not ready. Please try again.');
+        mediaStream.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+        return;
+      }
+
+      videoEl.srcObject = mediaStream;
+
+      // Wait for video to actually start playing
+      const handlePlaying = () => {
+        setCameraReady(true);
+      };
+
+      const handleError = () => {
+        setCameraError('Could not play video stream. Try the upload option.');
+      };
+
+      videoEl.addEventListener('playing', handlePlaying, { once: true });
+      videoEl.addEventListener('error', handleError, { once: true });
+
+      // Start playback
+      try {
+        await videoEl.play();
+      } catch {
+        // Some browsers need explicit playsinline removed
+        videoEl.removeAttribute('playsinline');
+        try {
+          await videoEl.play();
+        } catch {
+          setCameraError('Could not start video playback. Try the upload option.');
+        }
+      }
+
+      // Safety timeout - if camera doesn't signal ready in 5 seconds, assume it's ready anyway
+      // (some browsers don't fire 'playing' event reliably)
+      const safetyTimer = setTimeout(() => {
+        if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+          setCameraReady(true);
+        }
+      }, 5000);
+
+      return () => {
+        clearTimeout(safetyTimer);
+        videoEl.removeEventListener('playing', handlePlaying);
+        videoEl.removeEventListener('error', handleError);
+      };
     } catch (err: any) {
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setCameraError('Camera permission denied. Please allow camera access in your browser settings, or use the upload option.');
@@ -83,37 +122,49 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
         setCameraError('No camera found on this device. Please use the upload option.');
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
         setCameraError('Camera is being used by another app. Close other apps and try again, or use upload.');
-      } else if (err.name === 'OverconstrainedError') {
-        // Retry with simpler constraints
-        try {
-          const simpleStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setStream(simpleStream);
-          if (videoRef.current) {
-            videoRef.current.srcObject = simpleStream;
-            videoRef.current.onloadedmetadata = () => {
-              videoRef.current?.play().then(() => setCameraReady(true));
-            };
-          }
-        } catch {
-          setCameraError('Could not access camera with any configuration. Please use upload.');
-        }
       } else {
         setCameraError(`Camera error: ${err.message || 'Unknown error'}. Please try the upload option.`);
       }
     }
-  };
+  }, [cameraFacing, stopCamera]);
 
+  // Effect: when camera mode is active, start the camera
   useEffect(() => {
-    return () => { stopCamera(); };
+    if (mode !== 'camera') return;
+
+    // Small delay to ensure video element is mounted
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      stopCamera();
+    };
+  }, [mode, startCamera, stopCamera]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
   }, []);
 
   const captureFromCamera = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current || !cameraReady) return;
-
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    if (!video || !canvas) return;
+
+    // Check video has actual dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      setCameraError('Camera feed not ready. Please wait a moment and try again.');
+      return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -130,7 +181,7 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
       onImageCaptured(canvas, dataUrl);
       setProcessing(false);
     }, 800);
-  }, [cameraReady, stream, onImageCaptured]);
+  }, [stopCamera, onImageCaptured]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -202,7 +253,7 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={startCamera}
+            onClick={() => setMode('camera')}
             className="flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border border-purple-700/30 rounded-2xl hover:border-purple-500/50 transition-all active:scale-95"
           >
             <div className="w-14 h-14 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -215,7 +266,7 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
           </button>
 
           <button
-            onClick={() => { setMode('upload'); fileInputRef.current?.click(); }}
+            onClick={() => { setMode('upload'); setTimeout(() => fileInputRef.current?.click(), 100); }}
             className="flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-amber-900/30 to-orange-900/30 border border-amber-700/30 rounded-2xl hover:border-amber-500/50 transition-all active:scale-95"
           >
             <div className="w-14 h-14 rounded-full bg-amber-500/20 flex items-center justify-center">
@@ -232,7 +283,6 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture={cameraFacing}
           onChange={handleFileUpload}
           className="hidden"
         />
@@ -286,6 +336,7 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
               <Loader2 size={32} className="text-purple-400 animate-spin mb-3" />
               <p className="text-slate-400 text-sm">Starting camera...</p>
+              <p className="text-slate-500 text-xs mt-2">Make sure to allow camera access</p>
             </div>
           )}
 
@@ -338,27 +389,44 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
           </button>
 
           <button
-            onClick={() => { stopCamera(); setMode('upload'); fileInputRef.current?.click(); }}
+            onClick={() => { stopCamera(); setMode('upload'); setTimeout(() => fileInputRef.current?.click(), 100); }}
             className="p-3 bg-white/10 rounded-full hover:bg-white/20 transition-colors"
           >
             <ImageIcon size={20} className="text-white" />
           </button>
         </div>
 
+        {/* Hidden canvas for capture */}
+        <canvas ref={canvasRef} className="hidden" />
+
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture={cameraFacing}
           onChange={handleFileUpload}
           className="hidden"
         />
 
         <p className="text-center text-slate-500 text-xs">
-          {overlayType === 'face' ? 'Position your face within the oval guide' : 
-           overlayType === 'palm' ? 'Hold your palm flat, facing the camera clearly' :
-           `Position ${label.toLowerCase()} clearly in frame`}
+          {cameraReady ? (
+            overlayType === 'face' ? 'Position your face within the oval guide' : 
+            overlayType === 'palm' ? 'Hold your palm flat, facing the camera clearly' :
+            `Position ${label.toLowerCase()} clearly in frame`
+          ) : !cameraError ? (
+            'Waiting for camera to start...'
+          ) : (
+            'Camera error - try upload option below'
+          )}
         </p>
+
+        {!cameraReady && !cameraError && (
+          <button
+            onClick={() => { setMode('upload'); setTimeout(() => fileInputRef.current?.click(), 100); }}
+            className="w-full py-2 text-purple-400 text-sm hover:text-purple-300 transition-colors"
+          >
+            Camera not working? Upload an image instead →
+          </button>
+        )}
       </div>
     );
   }
@@ -384,6 +452,9 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
           className="hidden"
         />
 
+        {/* Hidden canvas for upload processing */}
+        <canvas ref={canvasRef} className="hidden" />
+
         {processing && (
           <div className="flex items-center justify-center gap-2 py-4">
             <Loader2 size={20} className="text-amber-400 animate-spin" />
@@ -408,7 +479,7 @@ export function ImageCapture({ onImageCaptured, aspectRatio = 'aspect-square', l
     );
   }
 
-  // Result display
+  // Result display (processing complete)
   return (
     <div className="space-y-4">
       <div className={`relative ${aspectRatio} bg-black rounded-2xl overflow-hidden`}>
