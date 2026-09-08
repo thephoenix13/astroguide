@@ -10,6 +10,7 @@ export function HomePage() {
   const [todayReading, setTodayReading] = useState<string>('');
   const [summary, setSummary] = useState('');
   const [guidelines, setGuidelines] = useState<{ doList: string[]; avoidList: string[] } | null>(null);
+  const [modalType, setModalType] = useState<'do' | 'dont' | null>(null);
 
   useEffect(() => {
     if (!user?.chartData) return;
@@ -81,43 +82,96 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Guidelines for Today */}
+      {/* Guidelines for Today - Compact Buttons */}
       {guidelines && (
-        <div className="space-y-4">
-          {/* DO List */}
-          <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-700/30 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <CheckCircle2 size={18} className="text-emerald-400" />
-              </div>
-              <h2 className="text-lg font-semibold text-white">Do Today</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setModalType('do')}
+            className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-700/30 rounded-xl p-4 text-left hover:border-emerald-500/50 transition-all active:scale-[0.98]"
+          >
+            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center mb-2">
+              <CheckCircle2 size={18} className="text-emerald-400" />
             </div>
-            <ul className="space-y-2">
-              {guidelines.doList.map((item, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="text-emerald-400 mt-0.5">•</span>
-                  <span className="text-slate-200 text-sm">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+            <p className="text-white font-medium text-sm">Do Today</p>
+            <p className="text-slate-500 text-xs mt-1">{guidelines.doList.length} recommendations</p>
+          </button>
 
-          {/* AVOID List */}
-          <div className="bg-gradient-to-br from-red-900/20 to-orange-900/20 border border-red-700/30 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
-                <XCircle size={18} className="text-red-400" />
-              </div>
-              <h2 className="text-lg font-semibold text-white">Avoid Today</h2>
+          <button
+            onClick={() => setModalType('dont')}
+            className="bg-gradient-to-br from-red-900/20 to-orange-900/20 border border-red-700/30 rounded-xl p-4 text-left hover:border-red-500/50 transition-all active:scale-[0.98]"
+          >
+            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center mb-2">
+              <XCircle size={18} className="text-red-400" />
             </div>
-            <ul className="space-y-2">
-              {guidelines.avoidList.map((item, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="text-red-400 mt-0.5">•</span>
-                  <span className="text-slate-200 text-sm">{item}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-white font-medium text-sm">Don'ts Today</p>
+            <p className="text-slate-500 text-xs mt-1">{guidelines.avoidList.length} cautions</p>
+          </button>
+        </div>
+      )}
+
+      {/* Guidelines Modal */}
+      {modalType && guidelines && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setModalType(null)}
+        >
+          <div
+            className={`w-full max-w-lg rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col ${
+              modalType === 'do'
+                ? 'bg-gradient-to-br from-emerald-900/90 to-teal-900/90 border border-emerald-700/50'
+                : 'bg-gradient-to-br from-red-900/90 to-orange-900/90 border border-red-700/50'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  modalType === 'do' ? 'bg-emerald-500/20' : 'bg-red-500/20'
+                }`}>
+                  {modalType === 'do' ? (
+                    <CheckCircle2 size={20} className="text-emerald-400" />
+                  ) : (
+                    <XCircle size={20} className="text-red-400" />
+                  )}
+                </div>
+                <h2 className="text-xl font-bold text-white">
+                  {modalType === 'do' ? 'Do Today' : 'Don\'ts Today'}
+                </h2>
+              </div>
+              <button
+                onClick={() => setModalType(null)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="overflow-y-auto flex-1 pr-2">
+              <ul className="space-y-3">
+                {(modalType === 'do' ? guidelines.doList : guidelines.avoidList).map((item, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <span className={`mt-1 flex-shrink-0 ${
+                      modalType === 'do' ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {modalType === 'do' ? '✓' : '✗'}
+                    </span>
+                    <span className="text-slate-100 text-sm leading-relaxed">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="mt-4 pt-4 border-t border-white/10 flex-shrink-0">
+              <button
+                onClick={() => setModalType(null)}
+                className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
