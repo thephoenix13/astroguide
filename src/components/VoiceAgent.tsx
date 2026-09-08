@@ -57,11 +57,18 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
     try {
       setError('');
       
-      // Get Deepgram API key from localStorage
-      const key = localStorage.getItem('DEEPGRAM_API_KEY');
+      // Fetch Deepgram API key from backend
+      const keyResponse = await fetch('/api/deepgram-key');
+      
+      if (!keyResponse.ok) {
+        const errorData = await keyResponse.json().catch(() => ({ error: 'Failed to fetch API key' }));
+        throw new Error(errorData.error || 'Failed to initialize voice service');
+      }
+      
+      const { key } = await keyResponse.json();
       
       if (!key) {
-        throw new Error('Deepgram API key not configured. Please add it in Profile settings.');
+        throw new Error('Deepgram API key not available');
       }
       
       // Get microphone access
@@ -145,7 +152,7 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
       if (err.name === 'NotAllowedError') {
         setError('Microphone access denied. Please allow microphone permissions.');
       } else if (err.message.includes('Deepgram API key not configured')) {
-        setError('Deepgram API key not configured. Please go to Profile settings and add your API key.');
+        setError('Deepgram API key not configured in Vercel. Please add DEEPGRAM_API_KEY to your Vercel environment variables and redeploy.');
       } else {
         setError(`Error: ${err.message}`);
       }

@@ -1,8 +1,8 @@
 # 🎤 Voice Mode Setup
 
-## Quick Setup (No Server Required!)
+## Setup Instructions
 
-Voice mode now uses your Deepgram API key directly from the browser. No serverless functions needed!
+Voice mode uses Deepgram's real-time speech-to-text API with a secure serverless function.
 
 ### Step 1: Get Your Deepgram API Key
 
@@ -11,16 +11,24 @@ Voice mode now uses your Deepgram API key directly from the browser. No serverle
 3. Click **API Keys** → **Create API Key**
 4. Copy your key
 
-### Step 2: Add API Key in the App
+### Step 2: Add API Key to Vercel
 
-1. Open your deployed app
-2. Go to **Profile** (bottom navigation)
-3. Scroll to **Voice Mode Settings**
-4. Paste your Deepgram API key
-5. Click **Save API Key**
-6. ✅ Done!
+1. Go to your Vercel project dashboard
+2. Click **Settings** → **Environment Variables**
+3. Add a new variable:
+   - **Name:** `DEEPGRAM_API_KEY`
+   - **Value:** Your Deepgram API key
+   - **Environment:** Production, Preview, Development (all)
+4. Click **Save**
 
-### Step 3: Test Voice Mode
+### Step 3: Redeploy
+
+1. Go to **Deployments** tab
+2. Click the three dots (⋯) on the latest deployment
+3. Select **Redeploy**
+4. Wait for deployment to complete
+
+### Step 4: Test Voice Mode
 
 1. Go to **Home** page
 2. Click the 🎤 **Voice Mode** button
@@ -35,19 +43,19 @@ Voice mode now uses your Deepgram API key directly from the browser. No serverle
 ## How It Works
 
 ```
-User enters API key in Profile settings
-    ↓
-Key saved to browser localStorage
-    ↓
 User clicks Voice Mode
     ↓
 Greeting plays automatically
     ↓
 User clicks microphone
     ↓
-App uses stored API key
+Frontend calls /api/deepgram-key
     ↓
-Connects to Deepgram WebSocket
+Vercel serverless function executes
+    ↓
+Returns { key: "your-api-key" }
+    ↓
+Frontend connects to Deepgram WebSocket
     ↓
 Audio streams to Deepgram
     ↓
@@ -62,21 +70,21 @@ Response spoken back
 
 ## Features
 
-✅ **No server needed** - API key stored in browser  
-✅ **Secure** - Key only in your browser, not shared  
+✅ **Secure** - API key stored in Vercel environment variables  
 ✅ **Free** - $200 credit from Deepgram  
 ✅ **Real-time** - Live transcription as you speak  
 ✅ **AI-powered** - Responses based on your birth chart  
 ✅ **Voice output** - AI speaks responses back  
+✅ **Serverless** - Automatic scaling on Vercel  
 
 ---
 
 ## Troubleshooting
 
 ### "Deepgram API key not configured"
-- Go to Profile settings
-- Add your API key
-- Click Save
+- Check that `DEEPGRAM_API_KEY` is set in Vercel environment variables
+- Redeploy after adding the variable
+- Check Vercel function logs for errors
 
 ### "Microphone access denied"
 - Allow microphone permissions in browser
@@ -88,18 +96,25 @@ Response spoken back
 - Click page first (some browsers block auto-play)
 
 ### "Failed to initialize voice service"
-- Check API key is correct
+- Check API key is correct in Vercel
 - Verify Deepgram account is active
 - Try regenerating API key
+- Check Vercel function logs
+
+### API returns HTML instead of JSON
+- Clear browser cache
+- Hard refresh (Ctrl+Shift+R)
+- Check Vercel deployment completed
+- Verify vercel.json is configured correctly
 
 ---
 
 ## Privacy
 
-- Your API key is stored **only in your browser** (localStorage)
-- Never sent to any server except Deepgram
-- Cleared when you clear browser data
-- Each user needs their own key
+- Your API key is stored securely in Vercel environment variables
+- Never exposed in frontend code
+- Serverless function acts as secure proxy
+- Only your domain can access the API endpoint
 
 ---
 
@@ -120,5 +135,25 @@ Response spoken back
 
 ---
 
-**Status**: ✅ Ready to use  
+## Technical Details
+
+### API Endpoint
+- **URL:** `/api/deepgram-key`
+- **Method:** GET
+- **Response:** `{ "key": "your-deepgram-api-key" }`
+
+### Deepgram Configuration
+- **Model:** Nova-2 (latest and most accurate)
+- **Features:** Smart formatting, punctuation, interim results
+- **Endpointing:** 300ms
+- **Utterance end:** 1000ms
+
+### WebSocket Connection
+- **URL:** `wss://api.deepgram.com/v1/listen`
+- **Protocol:** WebSocket with token authentication
+- **Audio format:** PCM 16-bit, 44100 Hz
+
+---
+
+**Status**: ✅ Ready to deploy  
 **Last Updated**: 2026-01-28
