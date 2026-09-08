@@ -58,7 +58,7 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
       setError('');
       
       // Fetch Deepgram API key from backend
-      const keyResponse = await fetch('/api/deepgram-key.cjs');
+      const keyResponse = await fetch('/api/deepgram-key');
       if (!keyResponse.ok) {
         throw new Error('Failed to initialize voice service');
       }
