@@ -57,13 +57,12 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
     try {
       setError('');
       
-      // Fetch Deepgram API key from backend
-      const keyResponse = await fetch('/api/deepgram-key');
-      if (!keyResponse.ok) {
-        throw new Error('Failed to initialize voice service');
-      }
+      // Get Deepgram API key from localStorage
+      const key = localStorage.getItem('DEEPGRAM_API_KEY');
       
-      const { key } = await keyResponse.json();
+      if (!key) {
+        throw new Error('Deepgram API key not configured. Please add it in Profile settings.');
+      }
       
       // Get microphone access
       const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -145,6 +144,8 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
       console.error('Error starting voice recognition:', err);
       if (err.name === 'NotAllowedError') {
         setError('Microphone access denied. Please allow microphone permissions.');
+      } else if (err.message.includes('Deepgram API key not configured')) {
+        setError('Deepgram API key not configured. Please go to Profile settings and add your API key.');
       } else {
         setError(`Error: ${err.message}`);
       }
