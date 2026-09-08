@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getDailyTransitReading } from '../lib/astrology';
-import { Sparkles, Calendar, TrendingUp, Star, Hand } from 'lucide-react';
+import { Sparkles, Calendar, TrendingUp, Star, Hand, GitCompareArrows, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function HomePage() {
@@ -145,6 +145,23 @@ export function HomePage() {
           </button>
         </div>
       </div>
+
+      {/* Holistic Comparison CTA */}
+      <button
+        onClick={() => navigate('/compare')}
+        className="w-full bg-gradient-to-r from-purple-600/20 via-amber-500/20 to-orange-500/20 border border-purple-700/20 rounded-2xl p-5 text-left hover:border-purple-500/40 transition-all active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500/30 to-amber-500/30 flex items-center justify-center flex-shrink-0">
+            <GitCompareArrows size={22} className="text-amber-300" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-semibold text-sm">Holistic Comparison</p>
+            <p className="text-slate-400 text-xs mt-0.5">See how your Chart, Face & Palm readings align</p>
+          </div>
+          <ChevronRight size={18} className="text-slate-500" />
+        </div>
+      </button>
 
       {/* CTA */}
       <button

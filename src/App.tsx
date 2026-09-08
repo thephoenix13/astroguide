@@ -10,6 +10,7 @@ import { FaceReadingPage } from './pages/FaceReadingPage';
 import { PalmReadingPage } from './pages/PalmReadingPage';
 import { PredictionsPage } from './pages/PredictionsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ComparisonPage } from './pages/ComparisonPage';
 
 function AppRoutes() {
   const { user } = useApp();
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/chart" element={<ChartPage />} />
         <Route path="/chat" element={<ChatPage />} />
+        <Route path="/compare" element={<ComparisonPage />} />
         <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/face" element={<FaceReadingPage />} />
         <Route path="/palm" element={<PalmReadingPage />} />

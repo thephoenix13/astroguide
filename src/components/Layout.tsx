@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { Home, MessageCircle, Clock, Sparkles, User, Hand } from 'lucide-react';
+import { Home, MessageCircle, Sparkles, User, Hand, GitCompareArrows } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -12,6 +12,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
     { path: '/chat', icon: MessageCircle, label: 'Chat' },
+    { path: '/compare', icon: GitCompareArrows, label: 'Compare' },
     { path: '/face', icon: Sparkles, label: 'Face' },
     { path: '/palm', icon: Hand, label: 'Palm' },
     { path: '/profile', icon: User, label: 'Profile' },
@@ -25,19 +26,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
       
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#1a1040]/95 backdrop-blur-lg border-t border-purple-900/30 z-50">
-        <div className="max-w-lg mx-auto flex justify-around items-center py-2">
+        <div className="max-w-lg mx-auto flex justify-around items-center py-2 px-1">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
             return (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all ${
+                className={`flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-lg transition-all ${
                   isActive ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Icon size={20} className={isActive ? 'drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]' : ''} />
-                <span className="text-[10px] font-medium">{label}</span>
+                <Icon size={18} className={isActive ? 'drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]' : ''} />
+                <span className="text-[9px] font-medium">{label}</span>
               </button>
             );
           })}
