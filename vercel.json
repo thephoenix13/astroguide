@@ -1,17 +1,14 @@
 {
+  "cleanUrls": true,
+  "trailingSlash": false,
   "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
+    "api/deepgram-key.js": {
+      "includeFiles": "api/**"
     }
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
