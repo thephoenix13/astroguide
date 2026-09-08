@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, X, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Volume2, X, Loader2, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generateAIResponse } from '../lib/ai';
 
@@ -15,7 +15,11 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
-  const recognitionRef = useRef<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const wsRef = useRef<WebSocket | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
@@ -29,55 +33,143 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
   }, [isOpen]);
 
   useEffect(() => {
-    // Initialize speech recognition
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const speechResult = event.results[0][0].transcript;
-        setTranscript(speechResult);
-        handleUserSpeech(speechResult);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-          setError('Microphone access denied. Please allow microphone permissions.');
-        } else {
-          setError(`Speech recognition error: ${event.error}`);
-        }
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    } else {
-      setError('Speech recognition not supported in this browser. Try Chrome or Edge.');
-    }
-
     // Initialize speech synthesis
     synthRef.current = window.speechSynthesis;
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
       if (synthRef.current) {
         synthRef.current.cancel();
       }
+      stopListening();
     };
   }, []);
+
+  const startListening = async () => {
+    try {
+      setError('');
+      
+      // Fetch Deepgram API key from backend
+      const keyResponse = await fetch('/api/deepgram-key');
+      if (!keyResponse.ok) {
+        throw new Error('Failed to initialize voice service');
+      }
+      
+      const { key } = await keyResponse.json();
+      
+      // Get microphone access
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = mediaStream;
+
+      // Create WebSocket connection to Deepgram
+      const ws = new WebSocket(
+        'wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true&interim_results=true&endpointing=300&utterance_end_ms=1000',
+        ['token', key]
+      );
+      
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('Deepgram WebSocket connected');
+        setIsListening(true);
+        
+        // Set up audio streaming
+        const audioContext = new AudioContext({ sampleRate: 44100 });
+        audioContextRef.current = audioContext;
+        
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        
+        processor.onaudioprocess = (e) => {
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcmData = new Int16Array(inputData.length);
+          for (let i = 0; i < inputData.length; i++) {
+            pcmData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+          }
+          
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(pcmData.buffer);
+          }
+        };
+        
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'Results') {
+            const transcript = data.channel.alternatives[0].transcript;
+            
+            if (transcript) {
+              setTranscript(transcript);
+              
+              // If this is a final result
+              if (data.is_final && transcript.trim()) {
+                handleUserSpeech(transcript);
+              }
+            }
+          } else if (data.type === 'UtteranceEnd') {
+            // Utterance ended
+            if (transcript.trim()) {
+              handleUserSpeech(transcript);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing Deepgram message:', err);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setError('Voice recognition error. Please try again.');
+        setIsListening(false);
+      };
+
+      ws.onclose = () => {
+        console.log('Deepgram WebSocket closed');
+        setIsListening(false);
+      };
+
+    } catch (err: any) {
+      console.error('Error starting voice recognition:', err);
+      if (err.name === 'NotAllowedError') {
+        setError('Microphone access denied. Please allow microphone permissions.');
+      } else {
+        setError(`Error: ${err.message}`);
+      }
+    }
+  };
+
+  const stopListening = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    
+    setIsListening(false);
+  };
 
   const handleUserSpeech = (text: string) => {
     if (!user?.chartData) {
       setResponse('Please complete your birth chart first to use the voice agent.');
+      speakResponse('Please complete your birth chart first to use the voice agent.');
       return;
     }
+
+    setIsProcessing(true);
+    setTranscript(text);
 
     // Generate AI response
     const aiResponse = generateAIResponse(text, user, user.chartData, events);
@@ -88,7 +180,10 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
     addChatMessage({ role: 'assistant', content: aiResponse.text });
 
     // Speak the response
-    speakResponse(aiResponse.text);
+    setTimeout(() => {
+      speakResponse(aiResponse.text);
+      setIsProcessing(false);
+    }, 500);
   };
 
   const speakResponse = (text: string) => {
@@ -98,8 +193,9 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
     const cleanText = text
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
-      .replace(/_{1,2}/g, '')
-      .replace(/[^\w\s.,!?']/g, '')
+      .replace(/_{1,}/g, '')
+      .replace(/[🌟💫✨🌙⭐🔮]/g, '')
+      .replace(/\n+/g, '. ')
       .trim();
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
@@ -109,9 +205,10 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
 
     // Try to use a good voice
     const voices = synthRef.current.getVoices();
-    const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Female')) ||
-                          voices.find(v => v.lang.startsWith('en')) ||
-                          voices[0];
+    const preferredVoice = voices.find(v => 
+      v.name.includes('Google') && v.lang.startsWith('en')
+    ) || voices.find(v => v.lang.startsWith('en'));
+    
     if (preferredVoice) {
       utterance.voice = preferredVoice;
     }
@@ -123,54 +220,25 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
     synthRef.current.speak(utterance);
   };
 
-  const startListening = () => {
-    if (!recognitionRef.current) {
-      setError('Speech recognition not available');
-      return;
-    }
-
-    setError('');
-    setTranscript('');
-    setResponse('');
-
-    try {
-      recognitionRef.current.start();
-      setIsListening(true);
-    } catch (err) {
-      console.error('Error starting recognition:', err);
-      setError('Could not start listening. Please try again.');
-    }
-  };
-
-  const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    setIsListening(false);
-  };
-
   const stopSpeaking = () => {
     if (synthRef.current) {
       synthRef.current.cancel();
+      setIsSpeaking(false);
     }
-    setIsSpeaking(false);
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-gradient-to-br from-purple-900/95 to-indigo-900/95 border border-purple-700/50 rounded-2xl p-6 max-h-[80vh] overflow-hidden flex flex-col">
+      <div className="bg-gradient-to-br from-indigo-900/90 to-purple-900/90 border border-indigo-700/50 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
-              <Volume2 size={20} className="text-white" />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/30 to-pink-500/30 flex items-center justify-center">
+              <Mic size={20} className="text-indigo-300" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">Voice Guide</h2>
-              <p className="text-slate-400 text-xs">Ask me anything about your chart</p>
-            </div>
+            <h2 className="text-xl font-bold text-white">Voice Mode</h2>
           </div>
           <button
             onClick={onClose}
@@ -180,94 +248,76 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-          {/* Error */}
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto space-y-4">
+          {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-900/20 border border-red-700/30 rounded-xl">
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
               <p className="text-red-300 text-sm">{error}</p>
             </div>
           )}
 
           {/* Transcript */}
           {transcript && (
-            <div className="bg-white/5 border border-purple-800/20 rounded-xl p-4">
-              <p className="text-slate-400 text-xs mb-1">You said:</p>
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+              <p className="text-slate-400 text-xs mb-2">You said:</p>
               <p className="text-white text-sm">{transcript}</p>
+            </div>
+          )}
+
+          {/* Processing Indicator */}
+          {isProcessing && (
+            <div className="flex items-center gap-2 text-indigo-300">
+              <Loader2 size={16} className="animate-spin" />
+              <span className="text-sm">Processing...</span>
             </div>
           )}
 
           {/* Response */}
           {response && (
-            <div className="bg-gradient-to-br from-purple-900/40 to-indigo-900/40 border border-purple-700/30 rounded-xl p-4">
-              <p className="text-slate-400 text-xs mb-2">Guide says:</p>
-              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{response}</p>
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
+              <p className="text-slate-400 text-xs mb-2">AI Response:</p>
+              <p className="text-white text-sm whitespace-pre-line">{response}</p>
             </div>
           )}
 
-          {/* Empty state */}
-          {!transcript && !response && !error && (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 mx-auto rounded-full bg-purple-500/20 flex items-center justify-center mb-4">
-                <Mic size={32} className="text-purple-400" />
-              </div>
-              <p className="text-slate-300 text-sm mb-2">Tap the microphone to start</p>
-              <p className="text-slate-500 text-xs">Ask about your chart, predictions, or life guidance</p>
+          {/* Speaking Indicator */}
+          {isSpeaking && (
+            <div className="flex items-center gap-2 text-emerald-300">
+              <Volume2 size={16} className="animate-pulse" />
+              <span className="text-sm">Speaking...</span>
             </div>
           )}
         </div>
 
         {/* Controls */}
-        <div className="flex-shrink-0 space-y-3">
-          {/* Listening indicator */}
-          {isListening && (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <p className="text-red-300 text-sm">Listening...</p>
-            </div>
-          )}
-
-          {/* Speaking indicator */}
-          {isSpeaking && (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <Loader2 size={16} className="text-purple-400 animate-spin" />
-              <p className="text-purple-300 text-sm">Speaking...</p>
-            </div>
-          )}
-
-          {/* Main button */}
+        <div className="flex items-center justify-center gap-4 mt-6 flex-shrink-0">
           <button
             onClick={isListening ? stopListening : startListening}
-            disabled={isSpeaking}
-            className={`w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+            disabled={isSpeaking || isProcessing}
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
               isListening
-                ? 'bg-red-600 hover:bg-red-500 text-white'
-                : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white'
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                : 'bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isListening ? (
-              <>
-                <MicOff size={20} />
-                Stop Listening
-              </>
+              <MicOff size={24} className="text-white" />
             ) : (
-              <>
-                <Mic size={20} />
-                Start Speaking
-              </>
+              <Mic size={24} className="text-white" />
             )}
           </button>
-
-          {/* Stop speaking button */}
-          {isSpeaking && (
-            <button
-              onClick={stopSpeaking}
-              className="w-full py-2 bg-white/10 hover:bg-white/20 rounded-xl text-slate-300 text-sm transition-colors"
-            >
-              Stop Speaking
-            </button>
-          )}
         </div>
+
+        {/* Instructions */}
+        <p className="text-center text-slate-400 text-xs mt-4 flex-shrink-0">
+          {isListening
+            ? 'Listening... Speak now'
+            : isSpeaking
+            ? 'AI is speaking...'
+            : 'Tap the microphone to start'}
+        </p>
       </div>
     </div>
   );
