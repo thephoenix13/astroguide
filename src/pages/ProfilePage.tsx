@@ -1,23 +1,13 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { LogOut, Crown, Star, Calendar, MapPin, Clock, Shield, ChevronRight, Sparkles, Hand, Mic, Save, Check } from 'lucide-react';
+import { LogOut, Crown, Star, Calendar, MapPin, Clock, Shield, ChevronRight, Sparkles, Hand } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function ProfilePage() {
   const { user, logout, getAccuracyScore, predictions, events, faceReadings, palmReadings } = useApp();
   const navigate = useNavigate();
   const [showPricing, setShowPricing] = useState(false);
-  const [deepgramKey, setDeepgramKey] = useState(localStorage.getItem('DEEPGRAM_API_KEY') || '');
-  const [keySaved, setKeySaved] = useState(false);
   const score = getAccuracyScore();
-
-  const saveDeepgramKey = () => {
-    if (deepgramKey.trim()) {
-      localStorage.setItem('DEEPGRAM_API_KEY', deepgramKey.trim());
-      setKeySaved(true);
-      setTimeout(() => setKeySaved(false), 2000);
-    }
-  };
 
   if (!user) return null;
 
@@ -61,52 +51,6 @@ export function ProfilePage() {
             <span className="text-slate-300">{user.birthPlace}</span>
           </div>
         </div>
-      </div>
-
-      {/* Voice Mode Settings */}
-      <div className="bg-white/5 border border-purple-800/20 rounded-2xl p-5 space-y-3">
-        <div className="flex items-center gap-2">
-          <Mic size={18} className="text-indigo-400" />
-          <h2 className="text-white font-semibold text-sm">Voice Mode Settings</h2>
-        </div>
-        <p className="text-slate-400 text-xs">
-          Enter your Deepgram API key to enable voice mode. Get one free at{' '}
-          <a href="https://console.deepgram.com" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">
-            console.deepgram.com
-          </a>
-        </p>
-        <div className="space-y-2">
-          <input
-            type="password"
-            value={deepgramKey}
-            onChange={(e) => setDeepgramKey(e.target.value)}
-            placeholder="Enter your Deepgram API key"
-            className="w-full px-3 py-2 bg-white/5 border border-purple-800/30 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500"
-          />
-          <button
-            onClick={saveDeepgramKey}
-            disabled={!deepgramKey.trim()}
-            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2 transition-all"
-          >
-            {keySaved ? (
-              <>
-                <Check size={16} />
-                Saved!
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                Save API Key
-              </>
-            )}
-          </button>
-        </div>
-        {deepgramKey && (
-          <p className="text-emerald-400 text-xs flex items-center gap-1">
-            <Check size={12} />
-            API key configured
-          </p>
-        )}
       </div>
 
       {/* Stats */}
