@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { getDailyTransitReading } from '../lib/astrology';
-import { Sparkles, Calendar, TrendingUp, Star, Hand, GitCompareArrows, ChevronRight } from 'lucide-react';
+import { getDailyTransitReading, getDailyGuidelines } from '../lib/astrology';
+import { Sparkles, Calendar, TrendingUp, Star, Hand, GitCompareArrows, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function HomePage() {
@@ -9,6 +9,7 @@ export function HomePage() {
   const navigate = useNavigate();
   const [todayReading, setTodayReading] = useState<string>('');
   const [summary, setSummary] = useState('');
+  const [guidelines, setGuidelines] = useState<{ doList: string[]; avoidList: string[] } | null>(null);
 
   useEffect(() => {
     if (!user?.chartData) return;
@@ -24,6 +25,10 @@ export function HomePage() {
       setSummary(sum);
       addReading({ date: today, content, summary: sum });
     }
+    
+    // Generate daily guidelines
+    const dailyGuidelines = getDailyGuidelines(user.chartData);
+    setGuidelines(dailyGuidelines);
   }, [user]);
 
   const pendingPredictions = predictions.filter(p => p.status === 'pending').length;
@@ -75,6 +80,47 @@ export function HomePage() {
           {todayReading.split('\n\n').slice(0, 3).join('\n\n')}
         </div>
       </div>
+
+      {/* Guidelines for Today */}
+      {guidelines && (
+        <div className="space-y-4">
+          {/* DO List */}
+          <div className="bg-gradient-to-br from-emerald-900/20 to-teal-900/20 border border-emerald-700/30 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle2 size={18} className="text-emerald-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">Do Today</h2>
+            </div>
+            <ul className="space-y-2">
+              {guidelines.doList.map((item, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="text-emerald-400 mt-0.5">•</span>
+                  <span className="text-slate-200 text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* AVOID List */}
+          <div className="bg-gradient-to-br from-red-900/20 to-orange-900/20 border border-red-700/30 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                <XCircle size={18} className="text-red-400" />
+              </div>
+              <h2 className="text-lg font-semibold text-white">Avoid Today</h2>
+            </div>
+            <ul className="space-y-2">
+              {guidelines.avoidList.map((item, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="text-red-400 mt-0.5">•</span>
+                  <span className="text-slate-200 text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Chart Summary */}
       {user?.chartData && (

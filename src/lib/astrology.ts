@@ -183,3 +183,135 @@ export function getDailyTransitReading(chart: BirthChart): { content: string; su
   
   return { content, summary };
 }
+
+export function getDailyGuidelines(chart: BirthChart): { doList: string[]; avoidList: string[] } {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+  
+  // Determine current planetary influences
+  const seed = dayOfYear + hashStr(chart.lagna.sign);
+  const moonSignIndex = seed % 12;
+  const moonSign = SIGNS[moonSignIndex];
+  const transitingHouse = ((moonSignIndex - SIGNS.indexOf(chart.lagna.sign) + 12) % 12) + 1;
+  
+  const mahadashaPlanet = chart.mahadasha.planet;
+  
+  // Generate DO list based on favorable transits
+  const doList: string[] = [];
+  
+  // House-based recommendations
+  if (transitingHouse === 1 || transitingHouse === 5 || transitingHouse === 9) {
+    doList.push('Start new projects or initiatives');
+    doList.push('Express your creativity');
+  }
+  if (transitingHouse === 2 || transitingHouse === 11) {
+    doList.push('Review finances and investments');
+    doList.push('Network with beneficial contacts');
+  }
+  if (transitingHouse === 3 || transitingHouse === 10) {
+    doList.push('Communicate important ideas');
+    doList.push('Take bold action on goals');
+  }
+  if (transitingHouse === 4 || transitingHouse === 7) {
+    doList.push('Spend quality time with family/partner');
+    doList.push('Nurture your home environment');
+  }
+  if (transitingHouse === 6) {
+    doList.push('Focus on health routines');
+    doList.push('Organize your workspace');
+  }
+  if (transitingHouse === 8 || transitingHouse === 12) {
+    doList.push('Meditate or practice mindfulness');
+    doList.push('Reflect on deeper life questions');
+  }
+  if (transitingHouse === 9) {
+    doList.push('Study or learn something new');
+    doList.push('Connect with mentors or teachers');
+  }
+  
+  // Mahadasha-based recommendations
+  if (mahadashaPlanet === 'Jupiter') {
+    doList.push('Seek wisdom and expand knowledge');
+    doList.push('Practice generosity');
+  } else if (mahadashaPlanet === 'Venus') {
+    doList.push('Appreciate beauty and art');
+    doList.push('Strengthen relationships');
+  } else if (mahadashaPlanet === 'Saturn') {
+    doList.push('Maintain discipline and structure');
+    doList.push('Work steadily toward long-term goals');
+  } else if (mahadashaPlanet === 'Mars') {
+    doList.push('Take decisive action');
+    doList.push('Channel energy into physical activity');
+  } else if (mahadashaPlanet === 'Mercury') {
+    doList.push('Write, speak, or learn');
+    doList.push('Organize information and plans');
+  }
+  
+  // Day of week recommendations (Vedic astrology)
+  if (dayOfWeek === 0) doList.push('Honor the Sun: set intentions for the week');
+  if (dayOfWeek === 1) doList.push('Moon day: focus on emotions and intuition');
+  if (dayOfWeek === 2) doList.push('Mars day: take courageous action');
+  if (dayOfWeek === 3) doList.push('Mercury day: learn and communicate');
+  if (dayOfWeek === 4) doList.push('Jupiter day: seek wisdom and teach');
+  if (dayOfWeek === 5) doList.push('Venus day: create beauty and harmony');
+  if (dayOfWeek === 6) doList.push('Saturn day: practice discipline and service');
+  
+  // Ensure at least 3 items
+  if (doList.length < 3) {
+    doList.push('Stay present and mindful');
+    doList.push('Practice gratitude');
+  }
+  
+  // Generate AVOID list based on challenging transits
+  const avoidList: string[] = [];
+  
+  // House-based avoidances
+  if (transitingHouse === 6 || transitingHouse === 8 || transitingHouse === 12) {
+    avoidList.push('Avoid starting major new ventures');
+    avoidList.push('Don\'t ignore health or wellness signals');
+  }
+  if (transitingHouse === 12) {
+    avoidList.push('Avoid excessive socializing');
+    avoidList.push('Don\'t make impulsive financial decisions');
+  }
+  if (transitingHouse === 8) {
+    avoidList.push('Avoid risky investments or speculation');
+    avoidList.push('Don\'t resist necessary changes');
+  }
+  if (transitingHouse === 6) {
+    avoidList.push('Avoid conflicts and arguments');
+    avoidList.push('Don\'t neglect daily responsibilities');
+  }
+  
+  // Moon sign considerations
+  if (moonSign === 'Scorpio' || moonSign === 'Capricorn') {
+    avoidList.push('Avoid emotional intensity and brooding');
+  }
+  if (moonSign === 'Aries' || moonSign === 'Leo') {
+    avoidList.push('Don\'t be overly aggressive or domineering');
+  }
+  if (moonSign === 'Cancer' || moonSign === 'Pisces') {
+    avoidList.push('Avoid excessive emotional reactivity');
+  }
+  
+  // Mahadasha-based avoidances
+  if (mahadashaPlanet === 'Saturn') {
+    avoidList.push('Don\'t cut corners or take shortcuts');
+    avoidList.push('Avoid procrastination');
+  } else if (mahadashaPlanet === 'Mars') {
+    avoidList.push('Don\'t act impulsively or aggressively');
+    avoidList.push('Avoid unnecessary conflicts');
+  } else if (mahadashaPlanet === 'Rahu') {
+    avoidList.push('Don\'t chase illusions or unrealistic goals');
+    avoidList.push('Avoid addictive behaviors');
+  }
+  
+  // Ensure at least 3 items
+  if (avoidList.length < 3) {
+    avoidList.push('Don\'t ignore your intuition');
+    avoidList.push('Avoid negative self-talk');
+  }
+  
+  return { doList: doList.slice(0, 5), avoidList: avoidList.slice(0, 5) };
+}
