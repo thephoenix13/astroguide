@@ -189,129 +189,159 @@ export function getDailyGuidelines(chart: BirthChart): { doList: string[]; avoid
   const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
   
-  // Determine current planetary influences
-  const seed = dayOfYear + hashStr(chart.lagna.sign);
-  const moonSignIndex = seed % 12;
-  const moonSign = SIGNS[moonSignIndex];
-  const transitingHouse = ((moonSignIndex - SIGNS.indexOf(chart.lagna.sign) + 12) % 12) + 1;
-  
+  // Get natal positions
+  const natalMoonSign = chart.planets.find(p => p.planet === 'Moon')?.sign || 'Aries';
+  const natalSunSign = chart.planets.find(p => p.planet === 'Sun')?.sign || 'Aries';
+  const lagnaSign = chart.lagna.sign;
   const mahadashaPlanet = chart.mahadasha.planet;
   
-  // Generate DO list based on favorable transits
+  // Current transit
+  const seed = dayOfYear + hashStr(chart.lagna.sign);
+  const transitingMoonSign = SIGNS[seed % 12];
+  const transitingHouse = ((seed % 12) - SIGNS.indexOf(chart.lagna.sign) + 12) % 12 + 1;
+  
   const doList: string[] = [];
-  
-  // House-based recommendations
-  if (transitingHouse === 1 || transitingHouse === 5 || transitingHouse === 9) {
-    doList.push('Start new projects or initiatives');
-    doList.push('Express your creativity');
-  }
-  if (transitingHouse === 2 || transitingHouse === 11) {
-    doList.push('Review finances and investments');
-    doList.push('Network with beneficial contacts');
-  }
-  if (transitingHouse === 3 || transitingHouse === 10) {
-    doList.push('Communicate important ideas');
-    doList.push('Take bold action on goals');
-  }
-  if (transitingHouse === 4 || transitingHouse === 7) {
-    doList.push('Spend quality time with family/partner');
-    doList.push('Nurture your home environment');
-  }
-  if (transitingHouse === 6) {
-    doList.push('Focus on health routines');
-    doList.push('Organize your workspace');
-  }
-  if (transitingHouse === 8 || transitingHouse === 12) {
-    doList.push('Meditate or practice mindfulness');
-    doList.push('Reflect on deeper life questions');
-  }
-  if (transitingHouse === 9) {
-    doList.push('Study or learn something new');
-    doList.push('Connect with mentors or teachers');
-  }
-  
-  // Mahadasha-based recommendations
-  if (mahadashaPlanet === 'Jupiter') {
-    doList.push('Seek wisdom and expand knowledge');
-    doList.push('Practice generosity');
-  } else if (mahadashaPlanet === 'Venus') {
-    doList.push('Appreciate beauty and art');
-    doList.push('Strengthen relationships');
-  } else if (mahadashaPlanet === 'Saturn') {
-    doList.push('Maintain discipline and structure');
-    doList.push('Work steadily toward long-term goals');
-  } else if (mahadashaPlanet === 'Mars') {
-    doList.push('Take decisive action');
-    doList.push('Channel energy into physical activity');
-  } else if (mahadashaPlanet === 'Mercury') {
-    doList.push('Write, speak, or learn');
-    doList.push('Organize information and plans');
-  }
-  
-  // Day of week recommendations (Vedic astrology)
-  if (dayOfWeek === 0) doList.push('Honor the Sun: set intentions for the week');
-  if (dayOfWeek === 1) doList.push('Moon day: focus on emotions and intuition');
-  if (dayOfWeek === 2) doList.push('Mars day: take courageous action');
-  if (dayOfWeek === 3) doList.push('Mercury day: learn and communicate');
-  if (dayOfWeek === 4) doList.push('Jupiter day: seek wisdom and teach');
-  if (dayOfWeek === 5) doList.push('Venus day: create beauty and harmony');
-  if (dayOfWeek === 6) doList.push('Saturn day: practice discipline and service');
-  
-  // Ensure at least 3 items
-  if (doList.length < 3) {
-    doList.push('Stay present and mindful');
-    doList.push('Practice gratitude');
-  }
-  
-  // Generate AVOID list based on challenging transits
   const avoidList: string[] = [];
   
-  // House-based avoidances
-  if (transitingHouse === 6 || transitingHouse === 8 || transitingHouse === 12) {
-    avoidList.push('Avoid starting major new ventures');
-    avoidList.push('Don\'t ignore health or wellness signals');
+  // === COLOR RECOMMENDATIONS ===
+  const planetColors: Record<string, { favorable: string[]; avoid: string[] }> = {
+    'Sun': { favorable: ['gold', 'orange', 'copper'], avoid: ['black', 'dark blue'] },
+    'Moon': { favorable: ['white', 'silver', 'light blue'], avoid: ['red', 'dark red'] },
+    'Mars': { favorable: ['red', 'coral', 'orange'], avoid: ['white', 'pastel colors'] },
+    'Mercury': { favorable: ['green', 'light green', 'emerald'], avoid: ['red', 'dark red'] },
+    'Jupiter': { favorable: ['yellow', 'gold', 'saffron'], avoid: ['black', 'dark blue'] },
+    'Venus': { favorable: ['white', 'pink', 'pastel colors'], avoid: ['yellow', 'red'] },
+    'Saturn': { favorable: ['blue', 'dark blue', 'black'], avoid: ['red', 'orange'] },
+    'Rahu': { favorable: ['smoky grey', 'blue', 'black'], avoid: ['yellow', 'white'] },
+    'Ketu': { favorable: ['grey', 'multi-color', 'earth tones'], avoid: ['bright colors'] }
+  };
+  
+  // Determine ruling planet of the day
+  const dayRuler = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'][dayOfWeek];
+  const dayColors = planetColors[dayRuler];
+  
+  doList.push(`Wear ${dayColors.favorable[0]} or ${dayColors.favorable[1]} colored clothes today`);
+  avoidList.push(`Avoid wearing ${dayColors.avoid[0]} or ${dayColors.avoid[1]} today`);
+  
+  // === FOOD RECOMMENDATIONS ===
+  const moonSignFoods: Record<string, { eat: string[]; avoid: string[] }> = {
+    'Aries': { eat: ['spicy foods', 'pulses', 'red lentils'], avoid: ['excessive sour foods', 'stale food'] },
+    'Taurus': { eat: ['sweet fruits', 'dairy products', 'rice'], avoid: ['bitter foods', 'excessive salt'] },
+    'Gemini': { eat: ['green vegetables', 'fruits', 'light meals'], avoid: ['heavy oily foods', 'meat'] },
+    'Cancer': { eat: ['milk', 'rice', 'sweet fruits', 'coconut'], avoid: ['sour foods', 'fermented items'] },
+    'Leo': { eat: ['wheat', 'jaggery', 'green vegetables'], avoid: ['non-veg', 'excessive salt'] },
+    'Virgo': { eat: ['green leafy vegetables', 'fruits', 'light grains'], avoid: ['sour curd', 'stale food'] },
+    'Libra': { eat: ['sweet foods', 'fruits', 'butter'], avoid: ['sour items', 'excessive spices'] },
+    'Scorpio': { eat: ['bitter foods', 'root vegetables', 'pulses'], avoid: ['sweet foods', 'excessive dairy'] },
+    'Sagittarius': { eat: ['chickpeas', 'turmeric', 'fruits'], avoid: ['sour foods', 'non-veg'] },
+    'Capricorn': { eat: ['sesame', 'oil seeds', 'root vegetables'], avoid: ['excessive sweets', 'dairy'] },
+    'Aquarius': { eat: ['light foods', 'fruits', 'green tea'], avoid: ['heavy oily foods', 'meat'] },
+    'Pisces': { eat: ['rice', 'milk', 'sweet fruits', 'honey'], avoid: ['non-veg', 'excessive spices'] }
+  };
+  
+  const moonFoodRec = moonSignFoods[natalMoonSign];
+  doList.push(`Eat ${moonFoodRec.eat[0]} and ${moonFoodRec.eat[1]} today`);
+  avoidList.push(`Avoid ${moonFoodRec.avoid[0]} and ${moonFoodRec.avoid[1]}`);
+  
+  // === DIRECTION RECOMMENDATIONS ===
+  const favorableDirections: Record<string, string[]> = {
+    'Sun': ['East', 'South-East'],
+    'Moon': ['North-West', 'North'],
+    'Mars': ['South', 'South-East'],
+    'Mercury': ['North', 'North-West'],
+    'Jupiter': ['North-East', 'East'],
+    'Venus': ['South-East', 'South'],
+    'Saturn': ['West', 'South-West'],
+    'Rahu': ['South-West', 'North-West'],
+    'Ketu': ['South-West', 'North-East']
+  };
+  
+  const favorableDir = favorableDirections[dayRuler];
+  doList.push(`Face ${favorableDir[0]} or ${favorableDir[1]} direction for important tasks`);
+  
+  const avoidDirections: Record<string, string[]> = {
+    'Sun': ['West', 'North'],
+    'Moon': ['South', 'South-East'],
+    'Mars': ['North', 'North-West'],
+    'Mercury': ['South', 'South-West'],
+    'Jupiter': ['West', 'South-West'],
+    'Venus': ['North', 'North-West'],
+    'Saturn': ['East', 'North-East'],
+    'Rahu': ['North-East', 'East'],
+    'Ketu': ['North', 'East']
+  };
+  
+  const avoidDir = avoidDirections[dayRuler];
+  avoidList.push(`Avoid traveling in ${avoidDir[0]} or ${avoidDir[1]} direction today`);
+  
+  // === ACTIVITY RECOMMENDATIONS ===
+  if (transitingHouse === 1 || transitingHouse === 5 || transitingHouse === 9) {
+    doList.push('Good day for meditation, spiritual practices, or starting new ventures');
   }
-  if (transitingHouse === 12) {
-    avoidList.push('Avoid excessive socializing');
-    avoidList.push('Don\'t make impulsive financial decisions');
+  if (transitingHouse === 2 || transitingHouse === 11) {
+    doList.push('Favorable for financial matters, banking, or investments');
   }
-  if (transitingHouse === 8) {
-    avoidList.push('Avoid risky investments or speculation');
-    avoidList.push('Don\'t resist necessary changes');
+  if (transitingHouse === 3 || transitingHouse === 10) {
+    doList.push('Take action on career goals, make important calls or meetings');
+  }
+  if (transitingHouse === 4 || transitingHouse === 7) {
+    doList.push('Spend time with family, resolve relationship matters');
   }
   if (transitingHouse === 6) {
-    avoidList.push('Avoid conflicts and arguments');
-    avoidList.push('Don\'t neglect daily responsibilities');
+    doList.push('Focus on health routines, exercise, or service activities');
+  }
+  if (transitingHouse === 8 || transitingHouse === 12) {
+    doList.push('Practice meditation, avoid major decisions, rest and reflect');
   }
   
-  // Moon sign considerations
-  if (moonSign === 'Scorpio' || moonSign === 'Capricorn') {
-    avoidList.push('Avoid emotional intensity and brooding');
-  }
-  if (moonSign === 'Aries' || moonSign === 'Leo') {
-    avoidList.push('Don\'t be overly aggressive or domineering');
-  }
-  if (moonSign === 'Cancer' || moonSign === 'Pisces') {
-    avoidList.push('Avoid excessive emotional reactivity');
-  }
-  
-  // Mahadasha-based avoidances
-  if (mahadashaPlanet === 'Saturn') {
-    avoidList.push('Don\'t cut corners or take shortcuts');
-    avoidList.push('Avoid procrastination');
+  // Mahadasha-specific
+  if (mahadashaPlanet === 'Jupiter') {
+    doList.push('Offer yellow flowers or turmeric to deity/temple');
+  } else if (mahadashaPlanet === 'Saturn') {
+    doList.push('Feed black dogs or crows, or donate black items');
   } else if (mahadashaPlanet === 'Mars') {
-    avoidList.push('Don\'t act impulsively or aggressively');
-    avoidList.push('Avoid unnecessary conflicts');
-  } else if (mahadashaPlanet === 'Rahu') {
-    avoidList.push('Don\'t chase illusions or unrealistic goals');
-    avoidList.push('Avoid addictive behaviors');
+    doList.push('Offer red flowers or hanuman chalisa recitation');
+  } else if (mahadashaPlanet === 'Venus') {
+    doList.push('Wear perfumes, appreciate art, or offer white flowers');
   }
   
-  // Ensure at least 3 items
-  if (avoidList.length < 3) {
-    avoidList.push('Don\'t ignore your intuition');
-    avoidList.push('Avoid negative self-talk');
+  // === AVOID RECOMMENDATIONS ===
+  if (transitingHouse === 6 || transitingHouse === 8 || transitingHouse === 12) {
+    avoidList.push('Avoid signing contracts or starting new business today');
+  }
+  if (transitingHouse === 8) {
+    avoidList.push('Avoid risky investments, gambling, or speculation');
+  }
+  if (transitingHouse === 12) {
+    avoidList.push('Avoid unnecessary expenses or lending money');
   }
   
-  return { doList: doList.slice(0, 5), avoidList: avoidList.slice(0, 5) };
+  // Moon sign specific avoidances
+  if (natalMoonSign === 'Scorpio' || natalMoonSign === 'Capricorn') {
+    avoidList.push('Avoid emotional confrontations, practice patience');
+  }
+  if (natalMoonSign === 'Aries' || natalMoonSign === 'Leo') {
+    avoidList.push('Avoid anger triggers, don\'t be overly aggressive');
+  }
+  
+  // Day-specific avoidances
+  if (dayOfWeek === 2) { // Tuesday - Mars day
+    avoidList.push('Avoid cutting hair or nails on Tuesday');
+  }
+  if (dayOfWeek === 6) { // Saturday - Saturn day
+    avoidList.push('Avoid buying iron, oil, or black items');
+  }
+  if (dayOfWeek === 0) { // Sunday - Sun day
+    avoidList.push('Don\'t skip breakfast, honor the Sun');
+  }
+  
+  // Ensure we have at least 5 items each
+  while (doList.length < 5) {
+    doList.push('Practice gratitude and mindfulness');
+  }
+  while (avoidList.length < 5) {
+    avoidList.push('Avoid negative thoughts and gossip');
+  }
+  
+  return { doList: doList.slice(0, 6), avoidList: avoidList.slice(0, 6) };
 }
