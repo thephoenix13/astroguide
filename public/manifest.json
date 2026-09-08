@@ -1,0 +1,14 @@
+{
+  "name": "Astro-Guide – AI Life Companion",
+  "short_name": "Astro-Guide",
+  "description": "Vedic astrology, face reading, and persistent memory for your life journey",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0a1e",
+  "theme_color": "#1e1b4b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
