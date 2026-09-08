@@ -12,6 +12,8 @@ interface AppContextType {
   faceReadings: FaceReading[];
   palmReadings: PalmReading[];
   isAuthenticated: boolean;
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
   login: (email: string, password: string) => boolean;
   signup: (email: string, password: string, fullName: string) => boolean;
   logout: () => void;
@@ -38,6 +40,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [readings, setReadings] = useState<DailyReading[]>(storage.getReadings());
   const [faceReadings, setFaceReadings] = useState<FaceReading[]>(storage.getFaceReadings());
   const [palmReadings, setPalmReadings] = useState<PalmReading[]>(storage.getPalmReadings());
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('astro-guide-theme');
+    return (saved === 'light' ? 'light' : 'dark');
+  });
 
   useEffect(() => { storage.setEvents(events); }, [events]);
   useEffect(() => { storage.setPredictions(predictions); }, [predictions]);
@@ -45,6 +51,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { storage.setReadings(readings); }, [readings]);
   useEffect(() => { storage.setFaceReadings(faceReadings); }, [faceReadings]);
   useEffect(() => { storage.setPalmReadings(palmReadings); }, [palmReadings]);
+
+  // Apply theme to document
+  useEffect(() => {
+    localStorage.setItem('astro-guide-theme', theme);
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
 
   const login = useCallback((email: string, _password: string): boolean => {
     const existingUser = storage.getUser();
@@ -164,6 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       user, events, predictions, chatHistory, readings, faceReadings, palmReadings,
       isAuthenticated: !!user?.onboardingComplete,
+      theme, toggleTheme,
       login, signup, logout, completeOnboarding,
       addEvent, deleteEvent, addPrediction, updatePredictionStatus,
       addChatMessage, clearChat, addReading, addFaceReading, addPalmReading, getAccuracyScore

@@ -1,9 +1,9 @@
 import { useApp } from '../context/AppContext';
-import { Home, MessageCircle, Sparkles, User, Hand, GitCompareArrows } from 'lucide-react';
+import { Home, MessageCircle, Sparkles, User, Hand, GitCompareArrows, Sun, Moon } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { user } = useApp();
+  const { user, theme, toggleTheme } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -24,6 +24,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </div>
       
+      {/* Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all shadow-lg"
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      >
+        {theme === 'dark' ? (
+          <Sun size={18} className="text-amber-300" />
+        ) : (
+          <Moon size={18} className="text-indigo-300" />
+        )}
+      </button>
+
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-[#1a1040]/95 backdrop-blur-lg border-t border-purple-900/30 z-50">
         <div className="max-w-lg mx-auto flex justify-around items-center py-2 px-1">
