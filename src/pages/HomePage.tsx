@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getDailyTransitReading, getDailyGuidelines } from '../lib/astrology';
-import { Sparkles, Calendar, TrendingUp, Star, Hand, GitCompareArrows, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
+import { Sparkles, Calendar, TrendingUp, Star, Hand, GitCompareArrows, ChevronRight, CheckCircle2, XCircle, Mic } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { VoiceAgent } from '../components/VoiceAgent';
 
 export function HomePage() {
   const { user, readings, addReading, predictions, events } = useApp();
@@ -11,6 +12,7 @@ export function HomePage() {
   const [summary, setSummary] = useState('');
   const [guidelines, setGuidelines] = useState<{ doList: string[]; avoidList: string[] } | null>(null);
   const [modalType, setModalType] = useState<'do' | 'dont' | null>(null);
+  const [voiceAgentOpen, setVoiceAgentOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.chartData) return;
@@ -271,6 +273,26 @@ export function HomePage() {
         <Sparkles size={18} />
         Ask Your AI Guide
       </button>
+
+      {/* Voice Mode */}
+      <button
+        onClick={() => setVoiceAgentOpen(true)}
+        className="w-full bg-gradient-to-r from-indigo-600/20 via-purple-600/20 to-pink-600/20 border border-indigo-700/30 rounded-2xl p-5 text-left hover:border-indigo-500/50 transition-all active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500/30 to-pink-500/30 flex items-center justify-center flex-shrink-0">
+            <Mic size={22} className="text-indigo-300" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-semibold text-sm">Voice Mode</p>
+            <p className="text-slate-400 text-xs mt-0.5">Talk to your AI astrologer hands-free</p>
+          </div>
+          <ChevronRight size={18} className="text-slate-500" />
+        </div>
+      </button>
+
+      {/* Voice Agent Modal */}
+      <VoiceAgent isOpen={voiceAgentOpen} onClose={() => setVoiceAgentOpen(false)} />
     </div>
   );
 }
