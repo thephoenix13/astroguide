@@ -23,7 +23,16 @@ export function VoiceAgent({ isOpen, onClose }: VoiceAgentProps) {
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      // Send greeting when voice mode opens
+      const greeting = "Hello! I'm your AI astrologer. How can I guide you today?";
+      setResponse(greeting);
+      
+      // Speak the greeting after a short delay
+      setTimeout(() => {
+        speakResponse(greeting);
+      }, 500);
+    } else {
       stopListening();
       stopSpeaking();
       setTranscript('');
